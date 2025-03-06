@@ -14,6 +14,7 @@ struct PlantDetailView: View {
     let plant: PlantInfo
 //    var plantImage: UIImage
     @State private var plantImage: UIImage?
+    @State private var navigateToHome = false
     
     init(plant: PlantInfo, plantImage: UIImage?) {
             self.plant = plant
@@ -76,6 +77,11 @@ struct PlantDetailView: View {
                         .cornerRadius(12)
                     }
                     .padding(.bottom, 24)
+                    
+                    
+                    NavigationLink(destination: home(), isActive: $navigateToHome) {
+                        EmptyView()
+                    }
                 }
                 .padding()
             }
@@ -88,14 +94,13 @@ struct PlantDetailView: View {
             }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink(destination: home()) {
-                        Button {
-                            plantImage = nil // ✅ Clear image to free memory
-                        } label: {
-                            Text("Done")
-                                .font(.system(size: 16, weight: .regular))
-                                .foregroundColor(Color.accentColor)
-                        }
+                    Button(action: {
+                        plantImage = nil // ✅ Clear image
+                        navigateToHome = true // ✅ Trigger navigation
+                    }) {
+                        Text("Done")
+                            .font(.system(size: 16, weight: .regular))
+                            .foregroundColor(Color.accentColor)
                     }
                 }
                 

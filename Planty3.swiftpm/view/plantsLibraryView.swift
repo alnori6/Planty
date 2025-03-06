@@ -69,7 +69,7 @@ struct PlantCardView: View {
         VStack {
             Image(uiImage: plantImage)
                 .resizable()
-                .scaledToFit()
+                .scaledToFill()
                 .frame(width: 120, height: 120)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .shadow(radius: 3)
