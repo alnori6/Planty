@@ -14,14 +14,13 @@ struct tipsPage: View {
     @EnvironmentObject var cameraModel : CameraModel
     
     let columns = [
-            GridItem(.flexible()),  // Equal spacing for all columns
-            GridItem(.flexible())
-        ]
+        GridItem(.flexible()),  // Equal spacing for all columns
+        GridItem(.flexible())
+    ]
     
     var body: some View {
         
         NavigationStack {
-            
             
             Text("Tips to help !")
                 .font(.system(size: 40, weight: .bold))
@@ -60,19 +59,8 @@ struct tipsPage: View {
                 }
             }
             .padding(.bottom, 24)
-            
-            
-            
-            NavigationLink(destination: CameraView().environmentObject(plantyVM).environmentObject(cameraModel)) {
-                Text("Continue")
-            }
-            .buttonStyle(primaryButton())
-           
-            
-
         }
         .padding()
-        
         
     }
 }
@@ -80,4 +68,6 @@ struct tipsPage: View {
 
 #Preview {
     tipsPage()
+        .environmentObject(PlantViewModel())
+        .environmentObject(CameraModel())
 }

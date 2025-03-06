@@ -5,221 +5,260 @@
 //  Created by Noori on 24/02/2025.
 //
 
-
 import SwiftUI
 import MapKit
 import CoreLocation
 
 struct PlantDetailView: View {
+    @EnvironmentObject var plantyVM: PlantViewModel
     let plant: PlantInfo
-    let plantImage: UIImage
-    @State private var region: MKCoordinateRegion?
-    @State private var isLoading = true
+//    var plantImage: UIImage
+    @State private var plantImage: UIImage?
+    
+    init(plant: PlantInfo, plantImage: UIImage?) {
+            self.plant = plant
+            self._plantImage = State(initialValue: plantImage) // ✅ Initialize as State
+        }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading) {
-                
-                // 📷 Plant Image (Placeholder)
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(height: 250)
-                    .overlay(
-                        Image(uiImage: plantImage) // Assuming image is named after the plant
-                            .resizable()
-                            .scaledToFill()
-                            .padding()
-                    ).clipShape(RoundedRectangle(cornerRadius: 16))
-
-                
-                // 🌿 Plant Name
-                Text(plant.name)
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(Color("darkGreen"))
-                
-                // 🔬 Scientific Name
-                HStack {
-                    Text("Scientific Name:")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(Color("darkBlue"))
-                    Text(plant.scientificName)
-                        .font(.system(size: 16, weight: .medium))
+        NavigationStack {
+            ScrollView {
+                LazyVStack(alignment: .leading) {
+//                    PlantImageView(image: plantImage) // ✅ Optimized Image Section
+                    if let image = plantImage {
+                       PlantImageView(image: image)
+                   }
                     
-                }
-                .padding(.top, 4)
-                
-                Divider()
-                    .background(Color("yellow"))
-                
-                // 📌 Overview
-                Text("Overview")
-                    .font(.system(size: 20, weight: .medium))
-                    .foregroundColor(Color("darkBlue"))
-                    .padding(.top, 24)
-                
-                Text(plant.overview)
-                    .font(.system(size: 16, weight: .medium))
-                    .padding(.bottom, 24)
-                
-                
-                // ⚕️ Medicinal Uses
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("⚕️Medicinal Uses")
+                    PlantNameView(name: plant.name, scientificName: plant.scientificName) // ✅ Optimized Name Section
+                    
+                    Divider().foregroundColor(Color("yellow"))
+                    
+                    Text("Overview")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundColor(Color("darkBlue"))
                     
                     Divider()
                     
-                    ForEach(plant.commonUses.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }, id: \.self) { use in
-                        HStack(alignment: .top) {
-                            Text("•")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.green)
-                            Text(use)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.black)
-                        }
-                    }
-                        
-                }
-                .padding()
-                .background(Color("lightGreen").opacity(0.5))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.bottom, 24)
-                
-                
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("⚠ Poisons Effect")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(Color("darkBlue"))
-                    
-                    Divider()
-                    
-                    ForEach(plant.poisn.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }, id: \.self) { use in
-                        HStack(alignment: .top) {
-                            Text("•")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.green)
-                            Text(use)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.black)
-                        }
-                    }
-                        
-                }
-                .padding()
-                .background(Color("lightBlue").opacity(0.6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.bottom, 24)
-                
-                
-                
-                VStack{
-                    // 🌍 Region
-                    Text("Where it Grows:")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(Color("darkBlue"))
-                    
-                    Text(plant.region)
+                    Text(plant.overview)
                         .font(.system(size: 16, weight: .medium))
-                        .padding(.bottom, 16)
+                        .foregroundColor(.black)
+                        .padding(.bottom, 24)
                     
-                    if let region = region {
-                        Map(coordinateRegion: .constant(region), annotationItems: [plant]) { plant in
-                            MapMarker(coordinate: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude), tint: .green)
+                    InformationCardView(title: "Common Names", text: plant.commonNames.joined(separator: ", ")) // ✅ Common Names
+                    
+                    MedicinalUsesView(uses: plant.commonUses) // ✅ Medicinal Uses List
+                    InformationCardView(title: "Poison Effects", text: plant.poison) // ✅ Poison Effects
+                    
+                    InformationCardView(title: "Traditional Uses", text: plant.traditionalUses) // ✅ Traditional Uses
+                    RegionView(plant: plant) // ✅ Region Information (Map & Text)
+                    
+                    
+                    Spacer()
+                    
+                    // MARK: - Save to Library Button
+                    Button(action: {
+//                        plantyVM.toggleSavePlant(plant)
+                        if let imageToSave = plantImage {
+                            plantyVM.toggleSavePlant(plant, image: imageToSave) 
                         }
-                        .frame(height: 200)
+                    }) {
+                        HStack {
+                            Image(systemName: plantyVM.isPlantSaved(plant) ? "bookmark.fill" : "bookmark")
+                                .font(.system(size: 22))
+                                .foregroundColor(Color("yellow"))
+                            Text(plantyVM.isPlantSaved(plant) ? "Remove from Library" : "Save to Library")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(plantyVM.isPlantSaved(plant) ? Color("darkBlue") : Color.white)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(plantyVM.isPlantSaved(plant) ? Color("lightBlue") : Color("darkBlue"))
                         .cornerRadius(12)
-                    } else {
-                        if isLoading {
-                            ProgressView("Fetching location...")
-                        } else {
-                            Text("⚠️ Unable to find location")
-                                .foregroundColor(.red)
-                                .font(.subheadline)
-                        }
                     }
+                    .padding(.bottom, 24)
                 }
                 .padding()
-                .background(Color.gray.opacity(0.1))
-                .cornerRadius(16)
-                .padding(.bottom, 24)
-                
-                
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Traditional Uses")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundColor(Color("darkBlue"))
-                    
-                    Divider()
-                    
-                    ForEach(plant.trditionalUses.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }, id: \.self) { use in
-                        HStack(alignment: .top) {
-                            Text("•")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.green)
-                            Text(use)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.black)
-                        }
-                    }
-                        
-                }
-                .padding()
-                .background(Color("yellow").opacity(0.6))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .padding(.bottom, 24)
-                
-                
-                Spacer()
             }
-            .padding()
-        }
-        .onAppear {
-            fetchCoordinates(for: plant.region)
-        }
-        .toolbar{
-            ToolbarItem(placement: .principal){
-                Text("Plant Info")
-                    .font(.system(size: 32, weight: .bold))
-                    .foregroundColor(Color("darkGreen"))
-            }
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        
-        
-    }
-    
-    //MARK: - search for location
-    private func fetchCoordinates(for region: String) {
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(region) { placemarks, error in
-            DispatchQueue.main.async {
-                if let location = placemarks?.first?.location {
-                    self.region = MKCoordinateRegion(
-                        center: location.coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 15)
-                    )
-                    isLoading = false
+            .onAppear {
+                if let firstRegion = plant.region.first, !firstRegion.isEmpty {
+                    plantyVM.fetchCoordinates(for: firstRegion)
                 } else {
-                    print("❌ Error fetching coordinates: \(error?.localizedDescription ?? "Unknown error")")
-                    isLoading = false
+                    print("⚠️ No valid region found for this plant.")
                 }
             }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink(destination: home()) {
+                        Button {
+                            plantImage = nil // ✅ Clear image to free memory
+                        } label: {
+                            Text("Done")
+                                .font(.system(size: 16, weight: .regular))
+                                .foregroundColor(Color.accentColor)
+                        }
+                    }
+                }
+                
+                ToolbarItem(placement: .principal) {
+                    Text(plant.name)
+                        .font(.system(size: 32, weight: .bold))
+                        .foregroundColor(Color("darkGreen"))
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarBackButtonHidden(true)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
-    
 }
 
+
+struct PlantImageView: View {
+    let image: UIImage
+    
+    var body: some View {
+        Image(uiImage: image)
+            .resizable()
+            .scaledToFill()
+            .frame(height: 300)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+}
+
+
+struct PlantNameView: View {
+    let name: String
+    let scientificName: String
+    
+    var body: some View {
+        VStack(alignment: .leading) {
+            Text(name)
+                .font(.system(size: 32, weight: .bold))
+                .foregroundColor(Color("darkGreen"))
+            
+            HStack {
+                Text("Scientific Name:")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(Color("darkBlue"))
+                Text(scientificName)
+                    .font(.system(size: 16, weight: .medium))
+            }
+        }
+        .padding(.top, 4)
+    }
+}
+
+
+struct InformationCardView: View {
+    let title: String
+    let text: String
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(Color("darkBlue"))
+            
+            Divider()
+            
+            Text(text)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.black)
+        }
+        .padding()
+        .background(Color("yellow").opacity(0.7))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.bottom, 24)
+    }
+}
+
+struct MedicinalUsesView: View {
+    let uses: [String]
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Medicinal Uses")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(Color("darkBlue"))
+            
+            Divider()
+            
+            LazyVStack(alignment: .leading, spacing: 8) {
+                ForEach(uses, id: \.self) { use in
+                    HStack(alignment: .top) {
+                        Text("•")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.green)
+                        Text(use)
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.black)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color("lightGreen").opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.bottom, 24)
+    }
+}
+
+
+struct RegionView: View {
+    @EnvironmentObject var plantyVM: PlantViewModel
+    let plant: PlantInfo
+    
+
+    var body: some View {
+        VStack {
+            Text("Where it Grows:")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(Color("darkBlue"))
+            
+            Text(plant.region.joined(separator: ", "))
+                .font(.system(size: 16, weight: .medium))
+                .padding(.bottom, 8)
+            
+            if let region = plantyVM.region {
+                let regionFirst = plant.region.first
+                Map(position: .constant(.region(region))) {
+                    Marker(regionFirst!, coordinate: CLLocationCoordinate2D(latitude: region.center.latitude, longitude: region.center.longitude))
+                }
+                .frame(height: 200)
+                .cornerRadius(12)
+            } else {
+                if plantyVM.isLoading {
+                    ProgressView("Fetching location...")
+                } else {
+                    Text("Unable to find location")
+                        .foregroundColor(.red)
+                        .font(.subheadline)
+                }
+            }
+        }
+        .padding()
+        .background(Color.gray.opacity(0.1))
+        .cornerRadius(16)
+        .padding(.bottom, 24)
+    }
+}
 
 
 #Preview {
-    PlantDetailView(plant: PlantInfo(name: "Aloe Vera", scientificName: "Aloe barbadensis miller", commonUses: "Soothes burns, aids digestion, supports skin health", region: "Africa, India, Middle East", overview: "Used for centuries for its cooling and healing properties in skincare and gut health.",trditionalUses: "Applied to wounds and burns in traditional medicine."  , poisn: "Oral consumption of latex form may cause digestive irritation.", image: "Avoid these 8 common mistakes to keep your aloe vera plants thriving.jpg"),
-                    
-    plantImage: UIImage(named: "nomiCircle2") ?? UIImage() // ✅ Placeholder image for preview
+    PlantDetailView(
+        plant: PlantInfo(
+            name: "Aloe Vera",
+            scientificName: "Aloe barbadensis miller",
+            commonNames: ["Burn Plant", "Lily of the Desert"],
+            commonUses: ["Soothes burns", "Aids digestion", "Supports skin health"],
+            region: ["Africa", "India", "Middle East"], // ✅ Fixed region placement
+            overview: "Used for centuries for its cooling and healing properties in skincare and gut health.", // ✅ Fixed overview placement
+            traditionalUses: "Ancient Egyptians called Aloe Vera the 'Plant of Immortality,' using it in embalming and for wound healing. In India, it has been a key ingredient in Ayurvedic treatments for skin conditions and digestion. In the Middle East, it has been used for centuries to hydrate the skin in desert climates.", // ✅ Fixed traditional uses placement
+            poison: "Oral consumption of latex form may cause digestive irritation.",
+            image: UIImage(named: "nomiCircle2") ?? UIImage()
+            
+        ),
+        plantImage: UIImage(named: "nomiCircle2") ?? UIImage() // ✅ Placeholder image for preview
     )
+    .environmentObject(PlantViewModel())
 }
-
-
-

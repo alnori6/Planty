@@ -24,7 +24,7 @@ struct PlantCareView: View {
                 if plantyVM.growthStage == plantyVM.maxGrowthStage && plantyVM.plantState == "happy" {
                     // Show Final Congratulatory View
                     FinalGrowthView().environmentObject(plantyVM)
-                } else {
+                }else {
                     
                     VStack {
                         
@@ -85,8 +85,6 @@ struct PlantCareView: View {
                         
                         
                         
-                        
-                        
                         Text(plantyVM.waterCount < 2 ? "Tap to Water the Plant" : "You've watered enough today!")
                             .padding(4)
                             .foregroundColor(.white)
@@ -95,9 +93,13 @@ struct PlantCareView: View {
                             .cornerRadius(16)
                         
                         
+                       
+                        
                     }//end vstack
                     .padding()
+                    
                 }// end else
+                
             }//end zstack
             .background(
                 Image(plantyVM.isNightTime ? "Blur_Night" : "Blur_Day")
@@ -111,20 +113,21 @@ struct PlantCareView: View {
                 Group {
                         if !plantyVM.notifications.isEmpty {
                             NotificationBoxView()
-                                .frame(width: 400, height: 200)
+                                .frame(width: 300, height: 200)
+                                .padding()
                         }
                     }, alignment: .top
                 
             )
             .toolbar{
                 ToolbarItem(placement: .principal){
-                    Text(plantyVM.selectedPlant.rawValue)
+                    Text(plantyVM.selectedPlant!.rawValue)
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(Color("darkGreen"))
                 }
                 ToolbarItem(placement: .topBarLeading){
                     
-                    NavigationLink(destination: home().environmentObject(plantyVM).navigationBarBackButtonHidden(true)) {
+                    NavigationLink(destination: home().environmentObject(plantyVM)) {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.backward")
                                 .foregroundColor(.accentColor)
@@ -134,10 +137,11 @@ struct PlantCareView: View {
                     
                 }
             }//end tool bar
+            .navigationBarBackButtonHidden(true)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .background(.ultraThinMaterial)
             .onAppear{
-//                plantyVM.updateTime
+                plantyVM.updateTime()
                 
                 if let savedPlant = UserDefaults.standard.string(forKey: "SelectedPlant") {
                     plantyVM.selectedPlant = PlantType(rawValue: savedPlant) ?? .pothos
@@ -175,14 +179,14 @@ struct NotificationBoxView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
-                .padding(.leading, 250)
+                .padding(.leading, 200)
             }
         }
         .padding()
         .background(.ultraThinMaterial)
         .cornerRadius(16)
         .shadow(radius: 3)
-        .frame(width: 400)
+        .frame(width: 300)
     }
 }
 

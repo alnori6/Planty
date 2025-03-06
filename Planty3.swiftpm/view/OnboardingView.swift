@@ -83,3 +83,7 @@ struct OnboardingView: View {
             }
     }
 }
+
+#Preview {
+    OnboardingView( hasSeenOnboarding: true, starting: false)
+}

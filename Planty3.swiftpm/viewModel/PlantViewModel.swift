@@ -12,6 +12,7 @@ import MapKit
 import CoreLocation
 
 
+
 enum PlantType: String, CaseIterable, Identifiable {
     case pothos = "Pothos"
     case anthurium = "Anthurium"
@@ -32,12 +33,12 @@ class PlantViewModel: ObservableObject {
     @Published var missedWatering: Int = 0 // Tracks missed waterings
     @Published var growthStage: Int = 1 // Starts from stage 1 to 5
     @Published var plantState: String = "happy" // happy, thirsty, dead
-    @Published var selectedPlant = PlantType .pothos // Default plant, can be "Pothos"
+    @Published var selectedPlant: PlantType? = nil  // Default plant, can be "Pothos"
     
     @Published var canWaterAgain: Bool = true // Controls second watering
     @Published var timeRemaining: TimeInterval = 0 // Tracks countdown time
     @Published var timerActive = false // If countdown is running
-
+    
     let maxGrowthStage = 5
     let wateringInterval: TimeInterval = 3 * 3600 // 3 hours in seconds
     
@@ -47,10 +48,9 @@ class PlantViewModel: ObservableObject {
     init() {
         addInitialNotification()
         updateTime()
+        requestNotificationPermissions()
         checkMissedWatering()
-        requestNotificationPermissions()
-        scheduleWateringNotifications()
-        requestNotificationPermissions()
+        loadSavedPlant()
         scheduleDailyWateringReminders()
         loadPlantData()
         checkWateringStatus()
@@ -75,84 +75,122 @@ class PlantViewModel: ObservableObject {
     
     
     // MARK: - Watering Logic with 3-Hour Delay
-        func waterPlant() {
-            let now = Date()
-
-            if waterCount == 0 {
-                // First watering
+    func waterPlant() {
+        let now = Date()
+        
+        if waterCount == 0 {
+            // First watering
+            waterCount += 1
+            lastWatered = now
+            plantState = "happy"
+            startWateringTimer()
+        } else if waterCount == 1, let lastWatered = lastWatered {
+            let elapsedTime = now.timeIntervalSince(lastWatered)
+            
+            if elapsedTime >= wateringInterval {
+                // Second watering allowed
                 waterCount += 1
-                lastWatered = now
                 plantState = "happy"
-                startWateringTimer()
-            } else if waterCount == 1, let lastWatered = lastWatered {
-                let elapsedTime = now.timeIntervalSince(lastWatered)
-
-                if elapsedTime >= wateringInterval {
-                    // Second watering allowed
-                    waterCount += 1
-                    plantState = "happy"
-                    timerActive = false
-
-                    if growthStage < maxGrowthStage {
-                        growthStage += 1
-                    }
-
-                    if growthStage == maxGrowthStage {
-                        addNotification("🎉 Congrats, you grew your plant! 🎉")
-                    }
-                } else {
-                    print("⚠️ Second watering is not allowed yet! Wait for \(formattedTimeRemaining()).")
-                    return
+                timerActive = false
+                
+                if growthStage < maxGrowthStage {
+                    growthStage += 1
                 }
+                
+                if growthStage == maxGrowthStage {
+                    addNotification("🎉 Congrats, you grew your plant! 🎉")
+                }
+                
             } else {
-                print("❌ You've already watered the plant twice today!")
+                
+                addNotification("⚠️ Second watering is not allowed yet! Wait for \(formattedTimeRemaining()).")
+                print("⚠️ Second watering is not allowed yet! Wait for \(formattedTimeRemaining()).")
                 return
             }
-
-            print("🌱 Watering done! Current growth stage: \(growthStage), State: \(plantState)")
+        } else {
+            addNotification("You've already watered the plant twice today!")
+            print("❌ You've already watered the plant twice today!")
+            return
         }
+        
+        addNotification("Next watering in: \(formattedTimeRemaining()) \n🌱 Current growth stage: \(growthStage), State: \(plantState)")
+        print("🌱 Watering done! Current growth stage: \(growthStage), State: \(plantState)")
+    }
     
-    // MARK: - Start Watering Timer
-        private func startWateringTimer() {
-            timeRemaining = wateringInterval
-            timerActive = true
-            scheduleWateringNotification()
-        }
+    // MARK: - Start Watering Timer (With Countdown)
+    private func startWateringTimer() {
+        timeRemaining = wateringInterval
+        timerActive = true
 
-        // MARK: - Update Countdown for Second Watering
-        func checkWateringStatus() {
-            if waterCount == 1, let lastWatered = lastWatered {
-                let elapsedTime = Date().timeIntervalSince(lastWatered)
-                timeRemaining = max(wateringInterval - elapsedTime, 0)
+        // ✅ Schedule Notification for when watering is allowed again
+        scheduleWateringNotification()
 
-                if timeRemaining == 0 {
-                    timerActive = false
-                }
+        // ✅ Start real-time countdown
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { timer in
+            if self.timeRemaining > 0 {
+                self.timeRemaining -= 1  // ⏳ Decrease time by 1 second
+            } else {
+                timer.invalidate()  // ⏹ Stop when countdown finishes
+                self.timerActive = false
             }
         }
+    }
+//    private func startWateringTimer() {
+//        timeRemaining = wateringInterval
+//        timerActive = true
+//        scheduleWateringNotification()
+//    }
+    
+    // MARK: - Update Countdown for Second Watering
+    // MARK: - Sync Countdown on App Reopen
+    func checkWateringStatus() {
+        if waterCount == 1, let lastWatered = lastWatered {
+            let elapsedTime = Date().timeIntervalSince(lastWatered)
+            timeRemaining = max(wateringInterval - elapsedTime, 0)
+
+            if timeRemaining > 0 {
+                timerActive = true
+                startWateringTimer()  // ✅ Restart countdown if app was closed
+            } else {
+                timerActive = false
+            }
+        }
+    }
+    
+//    func checkWateringStatus() {
+//        if waterCount == 1, let lastWatered = lastWatered {
+//            let elapsedTime = Date().timeIntervalSince(lastWatered)
+//            timeRemaining = max(wateringInterval - elapsedTime, 0)
+//            
+//            if timeRemaining == 0 {
+//                timerActive = false
+//            }
+//        }
+//    }
     
     // MARK: - Format Time Remaining
-        private func formattedTimeRemaining() -> String {
-            let hours = Int(timeRemaining) / 3600
-            let minutes = (Int(timeRemaining) % 3600) / 60
-            return "\(hours)h \(minutes)m"
-        }
+    private func formattedTimeRemaining() -> String {
+        let hours = Int(timeRemaining) / 3600
+        let minutes = (Int(timeRemaining) % 3600) / 60
+        return "\(hours)h \(minutes)m"
+    }
     
     // MARK: - Missed Watering Handling
-        func checkMissedWatering() {
-            guard let last = lastWatered else {
-                missedWatering += 1
-                updatePlantState()
-                return
-            }
-
-            let calendar = Calendar.current
-            if !calendar.isDateInToday(last) {
-                missedWatering += 1
-            }
-
+    func checkMissedWatering() {
+        guard let last = lastWatered else {
+            missedWatering += 1
             updatePlantState()
+            return
         }
+        
+        let calendar = Calendar.current
+        if !calendar.isDateInToday(last) {
+            missedWatering += 1
+        }
+        
+        updatePlantState()
+    }
+    
     
     func updatePlantState() {
         if missedWatering == 1 {
@@ -164,8 +202,38 @@ class PlantViewModel: ObservableObject {
         }
     }
     
-    func scheduleWateringNotifications() {
-        let notificationTimes = ["09:00", "21:00"] // 9 AM and 9 PM (24-hour format)
+    // MARK: - Load Selected Plant
+    func loadSavedPlant() {
+        if let savedPlant = UserDefaults.standard.string(forKey: "SelectedPlant"),
+           let plantType = PlantType(rawValue: savedPlant) {
+            selectedPlant = plantType
+        } else {
+            selectedPlant = nil // Ensure it remains nil if no plant is saved
+        }
+    }
+    
+    
+    // MARK: - Skip Plant Guide If Plant Already Selected
+    func shouldSkipPlantGuide() -> Bool {
+        return selectedPlant != nil
+    }
+    
+    
+    // MARK: - Notification Scheduling
+    private func scheduleWateringNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "💧 Time for the Second Watering!"
+        content.body = "3 hours have passed! Water your plant again to keep it growing!"
+        content.sound = .default
+        
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: wateringInterval, repeats: false)
+        let request = UNNotificationRequest(identifier: "secondWaterReminder", content: content, trigger: trigger)
+        
+        UNUserNotificationCenter.current().add(request)
+    }
+    
+    func scheduleDailyWateringReminders() {
+        let notificationTimes = ["09:00", "21:00"]
         
         for time in notificationTimes {
             let formatter = DateFormatter()
@@ -175,7 +243,7 @@ class PlantViewModel: ObservableObject {
                 let triggerDate = Calendar.current.dateComponents([.hour, .minute], from: scheduledTime)
                 
                 let content = UNMutableNotificationContent()
-                content.title = "Time to Water Your Plant! 🌱"
+                content.title = "🌱 Time to Water Your Plant!"
                 content.body = "Your plant needs care! Don't forget to water it."
                 content.sound = .default
                 
@@ -186,6 +254,7 @@ class PlantViewModel: ObservableObject {
             }
         }
     }
+    
     
     func addNotification(_ message: String) {
         notifications.append(message)
@@ -220,114 +289,190 @@ class PlantViewModel: ObservableObject {
     }
     
     func getPlantImage() -> String {
-        return "\(selectedPlant.rawValue) \(plantState) \(growthStage)" // Example: "Anthurium happy 3", "Pothos thirsty 5"
+        guard let selectedPlant = selectedPlant else {
+            return "nonPlant" // placeholder if no plant is selected
+        }
+        return "\(selectedPlant.rawValue) \(plantState) \(growthStage)"
     }
+    
+    
+    func selectPlant(_ plant: PlantType) {
+        selectedPlant = plant
+        UserDefaults.standard.set(plant.rawValue, forKey: "SelectedPlant") // Save selection
+    }
+    
     
     
     
     
     // MARK: - CSV Data Handling
     @Published var plantInfoList: [PlantInfo] = []
-    
-    // ✅ Load CSV Data in Playgrounds
+
     func loadPlantData() {
         guard let csvPath = getCSVPath() else {
             print("❌ Error: CSV file not found!")
             return
         }
-        
+
         do {
-            let data = try String(contentsOf: csvPath)
+            // ✅ Read CSV File Contents
+            let data = try String(contentsOf: csvPath, encoding: .utf8)
             let rows = data.components(separatedBy: "\n").dropFirst() // ✅ Skip headers
             
             for row in rows {
-                let columns = row.components(separatedBy: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                print("📄 CSV Row: \(row)")  // ✅ Debug print for each row
                 
-                if columns.count >= 8, columns[0].lowercased() != "folder name" { // ✅ Skip invalid rows
+                let columns = parseCSVRow(row)
+                print("🔍 Parsed Columns: \(columns)")  // ✅ Debug print for parsed values
+                
+                // ✅ Ensure exactly 9 fields per row
+                if columns.count == 9 {
                     let plant = PlantInfo(
-                        name: columns[0],
-                        scientificName: columns[1],
-                        commonUses: columns[2],
-                        region: columns[3],
-                        overview: columns[4],
-                        trditionalUses: columns[5],
-                        poisn: columns[6],
-                        image: columns[8]
+                        name: cleanValue(columns[0]),
+                        scientificName: cleanValue(columns[1]),
+                        commonNames: parseList(cleanValue(columns[2])),
+                        commonUses: parseList(cleanValue(columns[3])),
+                        region: parseList(cleanValue(columns[4])),
+                        overview: cleanValue(columns[5]),
+                        traditionalUses: cleanValue(columns[6]),
+                        poison: cleanValue(columns[7]).isEmpty ? "No toxic effects reported." : cleanValue(columns[7]),
+                        image: UIImage(named: cleanValue(columns[8])) ?? UIImage()
                     )
                     plantInfoList.append(plant)
+                    
+                    print("✅ Loaded Plant: \(plant.name)")
+                } else {
+                    print("⚠️ Skipping row due to incorrect column count: \(columns.count) -> \(row)")
                 }
             }
-            
-            print("✅ Loaded \(plantInfoList.count) plants successfully!")
-            
+
+            print("✅ Successfully loaded \(plantInfoList.count) plants!")
+
         } catch {
             print("❌ Error loading CSV: \(error.localizedDescription)")
         }
     }
-    
-    // ✅ Get CSV File Path
-    func getCSVPath() -> URL? {
-        let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
-        let csvPath = documentDirectory.appendingPathComponent("plantyINFO.csv")
-        
-        if !FileManager.default.fileExists(atPath: csvPath.path) {
-            print("⚠️ CSV not found in Documents, trying to copy from Resources...")
-            if let bundleCSV = Bundle.main.url(forResource: "plantyINFO", withExtension: "csv") {
-                do {
-                    try FileManager.default.copyItem(at: bundleCSV, to: csvPath)
-                    print("✅ CSV copied to Documents successfully!")
-                } catch {
-                    print("❌ Failed to copy CSV to Documents: \(error.localizedDescription)")
-                    return nil
-                }
+
+    // MARK: - Helper Functions
+
+    /// ✅ Cleans CSV values by trimming spaces and removing quotes
+    func cleanValue(_ value: String?) -> String {
+        guard let value = value else { return "Unknown" }
+        return value.trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+    }
+
+    /// ✅ Parses a comma-separated string into a **list of strings** (handles spaces properly)
+    func parseList(_ value: String) -> [String] {
+        return value
+            .trimmingCharacters(in: CharacterSet(charactersIn: "\""))
+            .split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+    }
+
+    /// ✅ Parses a CSV row while handling commas inside quotes
+    func parseCSVRow(_ row: String) -> [String] {
+        var result: [String] = []
+        var insideQuotes = false
+        var value = ""
+
+        for char in row {
+            if char == "\"" {
+                insideQuotes.toggle()  // ✅ Toggle insideQuotes when encountering quotes
+            } else if char == "," && !insideQuotes {
+                result.append(value.trimmingCharacters(in: .whitespaces))  // ✅ Split only if outside quotes
+                value = ""
             } else {
-                print("❌ No CSV found in Bundle!")
-                return nil
+                value.append(char)
             }
         }
-        
-        return csvPath
+
+        if !value.isEmpty {
+            result.append(value.trimmingCharacters(in: .whitespaces))
+        }
+
+        // ✅ Ensure exactly 9 columns (fill missing fields if necessary)
+        while result.count < 9 {
+            result.append("")
+        }
+
+        return result
+    }
+
+    /// ✅ Retrieves CSV file path from `Resources` in Playgrounds
+    func getCSVPath() -> URL? {
+        if let bundleCSV = Bundle.main.url(forResource: "plantyINFO", withExtension: "csv") {
+            return bundleCSV
+        } else {
+            print("❌ No CSV found in Resources!")
+            return nil
+        }
     }
     
-    // ✅ Plant Search
+    // ✅ Search Plant by Name
     func searchPlant(by name: String) -> PlantInfo? {
         let lowercasedName = name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         return plantInfoList.first { $0.name.lowercased().trimmingCharacters(in: .whitespacesAndNewlines) == lowercasedName }
     }
     
     
+    //MARK: - search for location
+    @Published var region: MKCoordinateRegion?
+    @Published var isLoading = false
     
-}
-
-//MARK: - image extension
-
-extension UIImage {
-    func toCVPixelBuffer() -> CVPixelBuffer? {
-        let width = 360
-        let height = 360
-        let attrs = [kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue,
-             kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue] as CFDictionary
-        var pixelBuffer: CVPixelBuffer?
-        let status = CVPixelBufferCreate(kCFAllocatorDefault, width, height,
-                                         kCVPixelFormatType_32BGRA, attrs,
-                                         &pixelBuffer)
-        guard status == kCVReturnSuccess, let buffer = pixelBuffer else { return nil }
+    func fetchCoordinates(for region: String) {
+        guard !region.isEmpty else {
+            print("❌ Error: Region string is empty.")
+            return
+        }
         
-        CVPixelBufferLockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        let pixelData = CVPixelBufferGetBaseAddress(buffer)
+        print("🔍 Fetching coordinates for region: \(region)") // Debug print
         
-        let context = CGContext(data: pixelData, width: width, height: height,
-                                bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer),
-                                space: CGColorSpaceCreateDeviceRGB(),
-                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)
+        isLoading = true
+        let geocoder = CLGeocoder()
         
-        guard let cgImage = self.cgImage else { return nil }
-        context?.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-        CVPixelBufferUnlockBaseAddress(buffer, CVPixelBufferLockFlags(rawValue: 0))
-        
-        return buffer
+        geocoder.geocodeAddressString(region) { placemarks, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    print("❌ Geocoder error: \(error.localizedDescription)")
+                    self.isLoading = false
+                    return
+                }
+                
+                if let location = placemarks?.first?.location {
+                    self.region = MKCoordinateRegion(
+                        center: location.coordinate,
+                        span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 15)
+                    )
+                    print("✅ Location found: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+                } else {
+                    print("⚠️ No location found for \(region)")
+                }
+                
+                self.isLoading = false
+            }
+        }
     }
-}
+    
+    //MARK: - to update the plant library
+    @Published var savedPlants: [PlantLibraryItem] = []
+    
+    // MARK: - Plant Library Management
+        func toggleSavePlant(_ plant: PlantInfo, image: UIImage) {
+            if let index = savedPlants.firstIndex(where: { $0.plant.name == plant.name }) {
+                savedPlants.remove(at: index) // ✅ Remove if already saved
+            } else {
+                let savedPlant = PlantLibraryItem(plant: plant, image: image) // ✅ Store with image
+                savedPlants.append(savedPlant)
+            }
+        }
+
+        func isPlantSaved(_ plant: PlantInfo) -> Bool {
+            return savedPlants.contains(where: { $0.plant.name == plant.name })
+        }
+    
+    
+} // end of the vm
+
 
 // MARK: - Text Box View (Reused Component)
 struct TextBoxView: View {

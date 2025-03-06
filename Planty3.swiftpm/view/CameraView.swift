@@ -21,11 +21,11 @@ struct CameraView: View {
     @EnvironmentObject private var cameraModel: CameraModel
     @EnvironmentObject var plantyVM: PlantViewModel
     @State private var isImagePickerPresented = false
-    @State private var sourceType: UIImagePickerController.SourceType? = .camera
     @State private var classificationResult: String = "Waiting for classification..."
     @State private var classificationResult2: String = ""
     @State private var selectedPlant: PlantInfo?
     @State private var navigateToDetail = false
+    @State private var showTipsSheet: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -36,13 +36,14 @@ struct CameraView: View {
                 if let image = cameraModel.capturedImage {
                     Image(uiImage: image)
                         .resizable()
-                        .scaledToFit()
+                        .scaledToFill()
                         .cornerRadius(16)
-                    
-                    Text(classificationResult)
-                        .font(.title3)
-                        .foregroundColor(.green)
-                        .padding()
+                        .frame(height: 300)
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+//                    Text(classificationResult)
+//                        .font(.title3)
+//                        .foregroundColor(.green)
+//                        .padding()
                 } else {
                     Image("nomiCircle2") // Placeholder image
                         .resizable()
@@ -50,10 +51,12 @@ struct CameraView: View {
                         .frame(height: 300)
                 }
                 
+                
                 Spacer()
                 
+                // MARK: - photo library
                 Button(action: {
-                    sourceType = .photoLibrary
+                    cameraModel.selectSource(.photoLibrary)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                             isImagePickerPresented = true
                         }
@@ -63,8 +66,9 @@ struct CameraView: View {
                 .buttonStyle(interface2Button())
                 
                 
+                // MARK: - camera
                 Button(action: {
-                    sourceType = .camera
+                    cameraModel.selectSource(.camera)
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                             isImagePickerPresented = true
                         }
@@ -74,7 +78,8 @@ struct CameraView: View {
                 .buttonStyle(interface2Button())
                 
                 
-                // ⚡ Classify Image Button
+
+                //MARK: - ⚡ Classify Image Button
                 if cameraModel.capturedImage != nil {
                     Button(action: {
                         classifyImage(image: cameraModel.capturedImage)
@@ -89,8 +94,16 @@ struct CameraView: View {
                 Spacer()
             }
             .padding()
+            .onAppear {
+                checkIfFirstTime()
+            }
+            .sheet(isPresented: $showTipsSheet){
+                tipsPage()
+                    .environmentObject(plantyVM)
+                    .environmentObject(cameraModel)
+            }
             .fullScreenCover(isPresented: $isImagePickerPresented) {
-                if let selectedSourceType = sourceType {
+                if let selectedSourceType = cameraModel.sourceType { // ✅ Get from CameraModel
                     ImagePicker(image: $cameraModel.capturedImage, sourceType: selectedSourceType)
                         .edgesIgnoringSafeArea(.all)
                 } else {
@@ -101,16 +114,25 @@ struct CameraView: View {
             }
             .navigationDestination(isPresented: $navigateToDetail) { // ✅ Fix: Use `navigationDestination`
                 if let plant = selectedPlant, let capturedImage = cameraModel.capturedImage {
-                   PlantDetailView(plant: plant, plantImage: capturedImage)
-                       .environmentObject(plantyVM)
-                       .environmentObject(cameraModel)
-               }
+                      PlantDetailView(plant: plant, plantImage: capturedImage)
+                          .environmentObject(plantyVM)
+                          .environmentObject(cameraModel)
+                  }
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("Choose a Photo")
                         .font(.system(size: 29, weight: .bold))
                         .foregroundColor(Color("darkGreen"))
+                }
+                ToolbarItem(placement: .topBarTrailing){
+                    Button {
+                        showTipsSheet = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 20))
+                            .foregroundColor(.accentColor)
+                    }
                 }
             }
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
@@ -162,7 +184,19 @@ struct CameraView: View {
         } catch {
             classificationResult = "⚠️ Error running classification: \(error.localizedDescription)"
         }
-    }
+    } // end the classification
+    
+    
+    // Check If It's First Time
+       private func checkIfFirstTime() {
+           let hasSeenTips = UserDefaults.standard.bool(forKey: "HasSeenTips")
+           if !hasSeenTips {
+               showTipsSheet = true
+               UserDefaults.standard.set(true, forKey: "HasSeenTips") // ✅ Save the state
+           }
+       }
+    
+    
 }
 
 #Preview {

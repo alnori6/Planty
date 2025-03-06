@@ -9,12 +9,21 @@ import AVFoundation
 import UIKit
 import Photos
 
+
+
 @MainActor
 class CameraModel: NSObject, ObservableObject, AVCapturePhotoCaptureDelegate {
     @Published var capturedImage: UIImage?
     private var session: AVCaptureSession?
     private var output = AVCapturePhotoOutput()
     @Published var isCameraAuthorized: Bool = false // 🔐 Track camera permission state
+    
+    @Published var sourceType: UIImagePickerController.SourceType? // ✅ Moved from View
+
+    func selectSource(_ type: UIImagePickerController.SourceType) {
+        self.sourceType = type
+    }
+    
     
     override init() {
         super.init()

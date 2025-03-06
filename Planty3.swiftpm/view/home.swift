@@ -49,19 +49,28 @@ struct home: View {
                 .padding(.bottom, 24)
                 
                 
-                
-                
-                
-                
-                NavigationLink(destination: PlantGuideIntroView().environmentObject(plantyVM)) {
+                NavigationLink(destination: CameraView().environmentObject(plantyVM)) {
                     HStack(spacing: 8) {
-                        Image(systemName: "leaf.fill")
-                        
-                        Text("Take Care of Your Plant")
+                        Image("leavSnap")
+                            .resizable()
+                            .frame(width: 30, height: 30)
+                        Text("Take a Plant Photo")
                     }
                     .padding()
                 }
-                .buttonStyle(interfaceButton())
+                .buttonStyle(interface2Button())
+                .padding(.bottom, 24)
+                
+                
+                // ✅ FIXED NAVIGATION: If a plant is already selected, go directly to PlantCareView
+               NavigationLink(destination: plantyVM.shouldSkipPlantGuide() ? AnyView(PlantCareView().environmentObject(plantyVM)) : AnyView(PlantGuideIntroView().environmentObject(plantyVM))) {
+                   HStack(spacing: 8) {
+                       Image(systemName: "leaf.fill")
+                       Text("Take Care of Your Plant")
+                   }
+                   .padding()
+               }
+               .buttonStyle(interfaceButton())
                 
                 
             
@@ -74,24 +83,12 @@ struct home: View {
                     .padding()
                 }
                 .buttonStyle(interfaceButton())
-                .padding(.bottom, 24)
-              
                 
-                
-                NavigationLink(destination: tipsPage().environmentObject(plantyVM)) {
-                    HStack(spacing: 8) {
-                        Image("leavSnap")
-                            .resizable()
-                            .frame(width: 30, height: 30)
-                        Text("Take a Plant Photo")
-                    }
-                    .padding()
-                }
-                .buttonStyle(interface2Button())
                 
                 
                 Spacer()
             }
+            .navigationBarBackButtonHidden(true)
             .padding(.top, 56)
             .padding()
             

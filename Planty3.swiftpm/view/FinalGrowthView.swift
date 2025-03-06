@@ -29,7 +29,7 @@ struct FinalGrowthView: View {
                     
                     Spacer()
                     
-                    Image("\(plantyVM.selectedPlant.rawValue) happy 5") // Final grown plant image
+                    Image("\(plantyVM.selectedPlant!.rawValue) happy 5") // Final grown plant image
                         .resizable()
                         .scaledToFit()
                         .frame(height: 300)
