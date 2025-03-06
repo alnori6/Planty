@@ -50,7 +50,7 @@
 
 | Welcome Screen | Plant Selection | Plant Care | Growth Stage | Palnt Library | 
 |---------------|----------------|------------|--------------|
-| <img width="966" alt="onBoarding" src="https://github.com/user-attachments/assets/06e485c1-7210-457e-98a0-a6f98d5be62a" /> | <img width="337" alt="plantSelect" src="https://github.com/user-attachments/assets/9bd893de-58af-4325-8094-41a828bb8490" /> |![plantCare2](https://github.com/user-attachments/assets/322dba40-789d-4efc-b885-a49c3267118e) |  ![plantCare3](https://github.com/user-attachments/assets/ad870e76-1389-4b80-a201-a9b750c4b18d) | ![IMG_2989](https://github.com/user-attachments/assets/c735391a-6d23-4269-b731-4f8ab5b15af8)
+| <img width="200" alt="onBoarding" src="https://github.com/user-attachments/assets/06e485c1-7210-457e-98a0-a6f98d5be62a" /> | <img width="200" alt="plantSelect" src="https://github.com/user-attachments/assets/9bd893de-58af-4325-8094-41a828bb8490" /> |![plantCare2](https://github.com/user-attachments/assets/322dba40-789d-4efc-b885-a49c3267118e) |  ![plantCare3](https://github.com/user-attachments/assets/ad870e76-1389-4b80-a201-a9b750c4b18d) | ![IMG_2989](https://github.com/user-attachments/assets/c735391a-6d23-4269-b731-4f8ab5b15af8)
  
 
 
